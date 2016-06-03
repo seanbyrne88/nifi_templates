@@ -6,7 +6,7 @@ Go to main nifi screen and click the small blueprint icon in the top right corne
 
 ![alt_text](resources/import_template_1.png)
 
-Click browse and naviate to any file under this repo and open the XML file.
+Click browse and navigate to any file under this repo and open the XML file.
 
 ### Note:
 Nifi will automatically create a copy of the xml file and store it as a .template file in `/conf/templates` under your nifi installation directory.
