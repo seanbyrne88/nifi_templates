@@ -34,8 +34,10 @@ import javax.json.JsonObjectBuilder;
 import javax.json.JsonWriter;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -60,8 +62,8 @@ public class PutHipchat extends AbstractProcessor {
     public static final PropertyDescriptor ROOM_ID = new PropertyDescriptor
             .Builder()
             .name("room-id")
-            .displayName("Room ID")
-            .description("The RoomID used to build Hipchat URL.")
+            .displayName("RoomID or Name")
+            .description("The RoomID or Name to send message to")
             .required(true)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
@@ -99,8 +101,8 @@ public class PutHipchat extends AbstractProcessor {
     public static final PropertyDescriptor FROM = new PropertyDescriptor
             .Builder()
             .name("username")
-            .displayName("Username")
-            .description("Displayed username from")
+            .displayName("From Note")
+            .description("The auth key will determine who the notification will show from, but this parameter will let you add an additional note after the name")
             .required(false)
             .expressionLanguageSupported(true)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -122,7 +124,7 @@ public class PutHipchat extends AbstractProcessor {
     public static final Set<Relationship> relationships = Collections.unmodifiableSet(
             new HashSet<>(Arrays.asList(REL_SUCCESS, REL_FAILURE)));
 
-    public static String buildHipchatUrl(String base, String room, String authToken)
+    private static String buildHipchatUrl(String base, String room, String authToken)
     {
         return base.replace("{room_id}", room).replace("{auth_token}", authToken);
     }
@@ -140,19 +142,33 @@ public class PutHipchat extends AbstractProcessor {
     @Override
     public void onTrigger(final ProcessContext context, final ProcessSession session) {
 
-        String roomID = context.getProperty(ROOM_ID).evaluateAttributeExpressions().getValue();
-        String authToken = context.getProperty(AUTH_TOKEN).getValue();
-        String hipchat_url = buildHipchatUrl(HIPCHAT_BASEURL_TEMPLATE, roomID, authToken);
-
         FlowFile flowFile = session.get();
         if ( flowFile == null ) {
             return;
         }
 
+        String roomID = context.getProperty(ROOM_ID).evaluateAttributeExpressions().getValue();
+        //to support room name we need to encode roomID for any spaces or other special characters used in Hipchat room name
+        try
+        {
+            roomID = URLEncoder.encode(roomID, "UTF-8").replace("+", "%20");
+        }
+        catch(UnsupportedEncodingException e)
+        {
+            getLogger().error("Failed to encode roomID "+ roomID + "with exception ", e);
+            flowFile = session.penalize(flowFile);
+            session.transfer(flowFile, REL_FAILURE);
+            context.yield();
+        }
+
+        String authToken = context.getProperty(AUTH_TOKEN).getValue();
+        String hipchat_url = buildHipchatUrl(HIPCHAT_BASEURL_TEMPLATE, roomID, authToken);
+
         JsonObjectBuilder builder = Json.createObjectBuilder();
-        String text = context.getProperty(MESSAGE_TEXT).evaluateAttributeExpressions(flowFile).getValue();
-        if (text != null && !text.isEmpty()) {
-            builder.add("message", text);
+
+        String message = context.getProperty(MESSAGE_TEXT).evaluateAttributeExpressions(flowFile).getValue();
+        if (message != null && !message.isEmpty()) {
+            builder.add("message", message);
         } else {
             // Hipchat requires a text attribute
             getLogger().error("FlowFile should have non-empty " + MESSAGE_TEXT.getName());
