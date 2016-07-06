@@ -95,6 +95,7 @@ public class PutHipchat extends AbstractProcessor {
             .displayName("Message Background Color")
             .description("Color to send background message")
             .required(true)
+            .defaultValue(GRAY)
             .allowableValues(RED, YELLOW, GREEN, GRAY, PURPLE, RANDOM)
             .build();
 
