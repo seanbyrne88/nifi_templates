@@ -1,6 +1,6 @@
 ## KafkaRawToHDFS
 
-This processor is designed to continuously poll a Kafka topic, hold the data until it grows to a (configurable) size and write it's raw content to HDFS.
+This template is designed to continuously poll a Kafka topic, hold the data until it grows to a (configurable) size and write it's raw content to HDFS.
 
 ### Processors used:
 [GetKafka](https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi.processors.kafka.GetKafka/index.html): Pulls data from a Kafka source. Configure your topic name and consumer group id within this processor.
